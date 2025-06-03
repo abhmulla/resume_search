@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Resume Matcher</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 4rem auto;
+      text-align: center;
+    }
+    #drop-zone {
+      border: 2px dashed #888;
+      padding: 2rem;
+      margin-bottom: 1rem;
+      cursor: pointer;
+    }
+    #drop-zone.hover {
+      border-color: #333;
+    }
+    #results {
+      margin-top: 2rem;
+      text-align: left;
+    }
+    .job {
+      margin-bottom: 1rem;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Resume → Job Matcher</h1>
+  <div id="drop-zone">Click or Drag & Drop your PDF/DOCX resume here</div>
+  <input type="file" id="file-input" accept=".pdf,.docx" style="display: none" />
+  <div id="results"></div>
+
+  <script>
+    const dropZone = document.getElementById("drop-zone");
+    const fileInput = document.getElementById("file-input");
+    const resultsDiv = document.getElementById("results");
+
+    dropZone.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", () => handleFiles(fileInput.files));
+
+    ["dragenter", "dragover"].forEach(evt => {
+      dropZone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dropZone.classList.add("hover");
+      });
+    });
+    ["dragleave", "drop"].forEach(evt => {
+      dropZone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("hover");
+      });
+    });
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      handleFiles(e.dataTransfer.files);
+    });
+
+    async function handleFiles(files) {
+      if (!files || files.length === 0) return;
+      const file = files[0];
+      const form = new FormData();
+      form.append("file", file);
+
+      resultsDiv.innerHTML = "<p>Processing…</p>";
+      try {
+        const resp = await fetch("/upload", {
+          method: "POST",
+          body: form
+        });
+        if (!resp.ok) {
+          const err = await resp.json();
+          resultsDiv.innerHTML = `<p style="color: red;">Error: ${err.detail}</p>`;
+          return;
+        }
+        const data = await resp.json();
+        displayResults(data.matches);
+      } catch (e) {
+        resultsDiv.innerHTML = `<p style="color: red;">Network error.</p>`;
+      }
+    }
+
+    function displayResults(matches) {
+      if (!matches || matches.length === 0) {
+        resultsDiv.innerHTML = "<p>No matches found.</p>";
+        return;
+      }
+      let html = "<h2>Top Matches</h2>";
+      matches.forEach(job => {
+        html += `
+          <div class="job">
+            <strong>${job.title}</strong> @ ${job.company} <br/>
+            <a href="${job.url}" target="_blank">${job.url}</a>
+          </div>
+        `;
+      });
+      resultsDiv.innerHTML = html;
+    }
+  </script>
+</body>
+</html>
