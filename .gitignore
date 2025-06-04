@@ -1,1 +1,5 @@
-venv/
+/venv/
+
+/temp_resume.pdf
+
+/app/__pycache__/
